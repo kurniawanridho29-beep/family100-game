@@ -1,286 +1,732 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family 100 Edukatif</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    </style>
-</head>
-<body class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 min-h-screen p-4">
-    <div class="max-w-6xl mx-auto" id="app"></div>
+import React, { useState, useEffect } from 'react';
+import { Volume2, VolumeX, ChevronRight, Upload, Check, X } from 'lucide-react';
 
-    <script>
-        let state = {
-            currentSlide: 0, soundOn: true, editMode: false, currentTeam: 'A',
-            teamA: { name: 'TIM A', score: 0, roundScores: [0,0,0,0,0,0] },
-            teamB: { name: 'TIM B', score: 0, roundScores: [0,0,0,0,0,0] },
-            mainRounds: [
-                { question: 'Sebutkan nama hewan yang hidup di air!', wrongCount: 0,
-                  answers: [
-                    {text:'IKAN',points:45,revealed:false},{text:'PAUS',points:25,revealed:false},
-                    {text:'LUMBA-LUMBA',points:15,revealed:false},{text:'UDANG',points:8,revealed:false},
-                    {text:'KEPITING',points:4,revealed:false},{text:'GURITA',points:3,revealed:false}
-                  ]},
-                { question: 'Sebutkan pekerjaan yang membantu orang lain!', wrongCount: 0,
-                  answers: [
-                    {text:'DOKTER',points:40,revealed:false},{text:'GURU',points:30,revealed:false},
-                    {text:'POLISI',points:15,revealed:false},{text:'PERAWAT',points:8,revealed:false},
-                    {text:'PEMADAM KEBAKARAN',points:5,revealed:false},{text:'TENTARA',points:2,revealed:false}
-                  ]},
-                { question: 'Sebutkan buah yang berwarna merah!', wrongCount: 0,
-                  answers: [
-                    {text:'APEL',points:35,revealed:false},{text:'SEMANGKA',points:30,revealed:false},
-                    {text:'STRAWBERRY',points:20,revealed:false},{text:'CERI',points:8,revealed:false},
-                    {text:'TOMAT',points:5,revealed:false},{text:'DELIMA',points:2,revealed:false}
-                  ]}
-            ],
-            imageRounds: [
-                {imageUrl:'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6?w=600',imageClue:'Ini adalah bangunan bersejarah di Paris...',imageAnswer:'Menara Eiffel',revealLevel:0,showAnswer:false},
-                {imageUrl:'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600',imageClue:'Ini adalah landmark terkenal di London...',imageAnswer:'Big Ben',revealLevel:0,showAnswer:false},
-                {imageUrl:'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600',imageClue:'Ini adalah monumen kemerdekaan di Indonesia...',imageAnswer:'Monas',revealLevel:0,showAnswer:false}
-            ]
-        };
+const Family100Game = () => {
+  const [currentSlide, setCurrentSlide] = useState(0); // 0=welcome, 1-3=main rounds, 4-6=image rounds
+  const [soundOn, setSoundOn] = useState(true);
+  const [editMode, setEditMode] = useState(false); // Mode edit untuk input file
+  
+  // Team State
+  const [teamA, setTeamA] = useState({ 
+    name: 'TIM A', 
+    score: 0,
+    roundScores: [0, 0, 0, 0, 0, 0] // Poin per babak (3 main + 3 image)
+  });
+  const [teamB, setTeamB] = useState({ 
+    name: 'TIM B', 
+    score: 0,
+    roundScores: [0, 0, 0, 0, 0, 0]
+  });
+  const [currentTeam, setCurrentTeam] = useState('A');
+  
+  // State untuk menyimpan URL gambar yang diunggah secara lokal (menggantikan default URL)
+  // ImageRounds State (3 babak tebak gambar) - Diperbarui untuk mendukung upload
+  const initialImageRounds = [
+    {
+      imageUrl: 'https://images.unsplash.com/photo-1516802273409-68526ee1bdd6?w=600',
+      imageClue: 'Ini adalah bangunan bersejarah di Paris...',
+      imageAnswer: 'Menara Eiffel',
+      revealLevel: 0,
+      showAnswer: false,
+      isAnswered: false, // Tambahkan status apakah sudah dijawab
+    },
+    {
+      imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600',
+      imageClue: 'Ini adalah landmark terkenal di London...',
+      imageAnswer: 'Big Ben',
+      revealLevel: 0,
+      showAnswer: false,
+      isAnswered: false,
+    },
+    {
+      imageUrl: 'https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600',
+      imageClue: 'Ini adalah monumen kemerdekaan di Indonesia...',
+      imageAnswer: 'Monas',
+      revealLevel: 0,
+      showAnswer: false,
+      isAnswered: false,
+    }
+  ];
+  
+  // Main Rounds State (3 babak)
+  const [mainRounds, setMainRounds] = useState([
+    {
+      question: 'Sebutkan nama hewan yang hidup di air!',
+      answers: [
+        { text: 'IKAN', points: 45, revealed: false },
+        { text: 'PAUS', points: 25, revealed: false },
+        { text: 'LUMBA-LUMBA', points: 15, revealed: false },
+        { text: 'UDANG', points: 8, revealed: false },
+        { text: 'KEPITING', points: 4, revealed: false },
+        { text: 'GURITA', points: 3, revealed: false }
+      ],
+      wrongCount: 0
+    },
+    {
+      question: 'Sebutkan pekerjaan yang membantu orang lain!',
+      answers: [
+        { text: 'DOKTER', points: 40, revealed: false },
+        { text: 'GURU', points: 30, revealed: false },
+        { text: 'POLISI', points: 15, revealed: false },
+        { text: 'PERAWAT', points: 8, revealed: false },
+        { text: 'PEMADAM KEBAKARAN', points: 5, revealed: false },
+        { text: 'TENTARA', points: 2, revealed: false }
+      ],
+      wrongCount: 0
+    },
+    {
+      question: 'Sebutkan buah yang berwarna merah!',
+      answers: [
+        { text: 'APEL', points: 35, revealed: false },
+        { text: 'SEMANGKA', points: 30, revealed: false },
+        { text: 'STRAWBERRY', points: 20, revealed: false },
+        { text: 'CERI', points: 8, revealed: false },
+        { text: 'TOMAT', points: 5, revealed: false },
+        { text: 'DELIMA', points: 2, revealed: false }
+      ],
+      wrongCount: 0
+    }
+  ]);
+  
+  const [imageRounds, setImageRounds] = useState(initialImageRounds);
 
-        function playSound(type) {
-            if(!state.soundOn)return;
-            try{
-                const ctx=new(window.AudioContext||window.webkitAudioContext)();
-                const osc=ctx.createOscillator(),gain=ctx.createGain();
-                osc.connect(gain);gain.connect(ctx.destination);
-                if(type==='correct'){osc.frequency.value=800;gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.3);}
-                else if(type==='wrong'){osc.frequency.value=200;osc.type='sawtooth';gain.gain.setValueAtTime(0.3,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.5);osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.5);}
-                else{osc.frequency.value=600;gain.gain.setValueAtTime(0.2,ctx.currentTime);gain.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.2);osc.start(ctx.currentTime);osc.stop(ctx.currentTime+0.2);}
-            }catch(e){}
-        }
+  // Sound Effects (Tidak ada perubahan di sini)
+  const playSound = (type) => {
+    if (!soundOn) return;
+    
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    if (type === 'correct') {
+      oscillator.frequency.value = 800;
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } else if (type === 'wrong') {
+      oscillator.frequency.value = 200;
+      oscillator.type = 'sawtooth';
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.5);
+    } else if (type === 'next') {
+      oscillator.frequency.value = 600;
+      gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    }
+  };
 
-        function getRoundIdx(){return state.currentSlide>=1&&state.currentSlide<=3?state.currentSlide-1:state.currentSlide>=4&&state.currentSlide<=6?state.currentSlide-4:0;}
-        function getTotalPoints(){if(state.currentSlide>=1&&state.currentSlide<=3){const r=state.mainRounds[getRoundIdx()];return r.answers.reduce((s,a)=>a.revealed?s+a.points:s,0);}return 0;}
-        
-        function nextSlide(){state.currentSlide++;playSound('next');render();}
-        function toggleSound(){state.soundOn=!state.soundOn;render();}
-        function toggleEdit(){state.editMode=!state.editMode;render();}
-        function switchTeam(){state.currentTeam=state.currentTeam==='A'?'B':'A';playSound('next');render();}
-        
-        function addPoints(team){
-            const p=getTotalPoints(),idx=state.currentSlide-1;
-            if(team==='A'){state.teamA.roundScores[idx]=p;state.teamA.score=state.teamA.roundScores.reduce((s,v)=>s+v,0);}
-            else{state.teamB.roundScores[idx]=p;state.teamB.score=state.teamB.roundScores.reduce((s,v)=>s+v,0);}
-            playSound('correct');render();
-        }
-        
-        function revealAns(i){const r=state.mainRounds[getRoundIdx()];if(!r.answers[i].revealed){r.answers[i].revealed=true;playSound('correct');render();}}
-        function addWrong(){const r=state.mainRounds[getRoundIdx()];if(r.wrongCount<3){r.wrongCount++;playSound('wrong');render();}}
-        function revealImg(){const r=state.imageRounds[getRoundIdx()];if(r.revealLevel<2){r.revealLevel++;playSound('correct');render();}}
-        function toggleAns(){const r=state.imageRounds[getRoundIdx()];r.showAnswer=!r.showAnswer;playSound('next');render();}
-        
-        function reset(){
-            if(!confirm('Reset game?'))return;
-            state.currentSlide=0;state.editMode=false;state.currentTeam='A';
-            state.teamA.score=0;state.teamA.roundScores=[0,0,0,0,0,0];
-            state.teamB.score=0;state.teamB.roundScores=[0,0,0,0,0,0];
-            state.mainRounds.forEach(r=>{r.answers.forEach(a=>a.revealed=false);r.wrongCount=0;});
-            state.imageRounds.forEach(r=>{r.revealLevel=0;r.showAnswer=false;});
-            playSound('next');render();
-        }
+  const getCurrentRoundIndex = () => {
+    if (currentSlide >= 1 && currentSlide <= 3) return currentSlide - 1;
+    if (currentSlide >= 4 && currentSlide <= 6) return currentSlide - 4;
+    return 0;
+  };
 
-        function teamCard(t){
-            const d=t==='A'?state.teamA:state.teamB,act=state.currentTeam===t;
-            const bg=t==='A'?(act?'bg-gradient-to-br from-blue-500 to-blue-700 ring-4 ring-yellow-400':'bg-gradient-to-br from-blue-400 to-blue-600'):(act?'bg-gradient-to-br from-red-500 to-red-700 ring-4 ring-yellow-400':'bg-gradient-to-br from-red-400 to-red-600');
-            const scores=d.roundScores.slice(0,6).map((s,i)=>{
-                const l=i<3?`B${i+1}`:`G${i-2}`,cls=s>0?'bg-white bg-opacity-30':'bg-black bg-opacity-20';
-                return`<div class="px-2 py-1 rounded ${cls}"><div class="text-white font-bold">${l}:${s}</div></div>`;
-            }).join('');
-            return`<div class="p-6 rounded-2xl shadow-lg transition ${bg}"><div class="text-center">
-                <h3 class="text-2xl font-bold text-white mb-2">${d.name}</h3>
-                <div class="text-5xl font-bold text-white mb-3">${d.score}</div>
-                ${act?'<div class="mt-2 text-yellow-300 font-bold animate-pulse">⭐ GILIRAN MAIN</div>':''}
-                <div class="mt-4 pt-4 border-t-2 border-white border-opacity-30">
-                    <div class="text-sm text-white text-opacity-80 mb-2">Poin per Babak:</div>
-                    <div class="grid grid-cols-3 gap-2 text-xs">${scores}</div>
-                </div></div></div>`;
-        }
+  const isMainRound = currentSlide >= 1 && currentSlide <= 3;
+  const isImageRound = currentSlide >= 4 && currentSlide <= 6;
+  
+  const currentRound = isMainRound ? mainRounds[getCurrentRoundIndex()] : null;
+  const currentImageRound = isImageRound ? imageRounds[getCurrentRoundIndex()] : null;
+  
+  const totalPoints = currentRound?.answers.reduce((sum, ans) => ans.revealed ? sum + ans.points : sum, 0) || 0;
 
-        function render(){
-            const app=document.getElementById('app');
-            let html='';
-            
-            // Header
-            html+=`<div class="bg-white rounded-t-3xl shadow-2xl p-6 flex justify-between items-center">
-                <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">🎮 FAMILY 100 EDUKATIF</h1>
-                <div class="flex gap-3">
-                    <button onclick="toggleSound()" class="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition">${state.soundOn?'🔊':'🔇'}</button>
-                    ${state.currentSlide===0?`<button onclick="toggleEdit()" class="px-6 py-3 rounded-full font-bold transition ${state.editMode?'bg-green-500 text-white':'bg-yellow-400 text-gray-800'}">${state.editMode?'💾 SELESAI':'✏️ EDIT SOAL'}</button>`:''}
-                    ${state.currentSlide>0?'<button onclick="reset()" class="px-6 py-3 rounded-full bg-red-500 text-white font-bold hover:bg-red-600 transition">🔄 RESET</button>':''}
-                </div></div>`;
-            
-            // Progress
-            if(state.currentSlide>0){
-                html+=`<div class="bg-white px-6 py-4"><div class="flex gap-2">${[1,2,3,4,5,6].map(n=>{
-                    const cls=state.currentSlide>=n?(n<=3?'bg-gradient-to-r from-blue-500 to-purple-500':'bg-gradient-to-r from-pink-500 to-orange-500'):'bg-gray-200';
-                    return`<div class="flex-1 h-3 rounded-full ${cls}"></div>`;
-                }).join('')}</div>
-                <div class="flex justify-between mt-2 text-sm font-bold text-gray-600">
-                    <span>BABAK 1</span><span>BABAK 2</span><span>BABAK 3</span>
-                    <span>GAMBAR 1</span><span>GAMBAR 2</span><span>GAMBAR 3</span>
-                </div></div>`;
-            }
-            
-            html+='<div class="bg-white rounded-b-3xl shadow-2xl p-8 min-h-[600px]">';
-            
-            // SLIDE 0: WELCOME
-            if(state.currentSlide===0){
-                if(state.editMode){
-                    html+='<div class="w-full max-w-4xl mx-auto"><h2 class="text-3xl font-bold mb-6 text-gray-800 text-center">⚙️ EDIT SEMUA SOAL</h2>';
-                    html+='<div class="mb-8"><h3 class="text-2xl font-bold mb-4 text-gray-800">📝 BABAK PERTANYAAN (1-3)</h3><div class="space-y-6">';
-                    state.mainRounds.forEach((r,ri)=>{
-                        html+=`<div class="bg-gray-50 p-6 rounded-2xl"><h4 class="text-xl font-bold mb-3 text-gray-700">BABAK ${ri+1}</h4>
-                            <input type="text" value="${r.question}" oninput="state.mainRounds[${ri}].question=this.value" class="w-full text-lg p-3 rounded-xl border-2 border-gray-300 mb-3" placeholder="Pertanyaan"/>
-                            <div class="grid grid-cols-2 gap-2">`;
-                        r.answers.forEach((a,ai)=>{
-                            html+=`<div class="flex gap-2">
-                                <input type="text" value="${a.text}" oninput="state.mainRounds[${ri}].answers[${ai}].text=this.value.toUpperCase()" class="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg" placeholder="Jawaban ${ai+1}"/>
-                                <input type="number" value="${a.points}" oninput="state.mainRounds[${ri}].answers[${ai}].points=parseInt(this.value)||0" class="w-16 px-2 py-2 border-2 border-gray-300 rounded-lg text-center" placeholder="Poin"/>
-                            </div>`;
-                        });
-                        html+='</div></div>';
-                    });
-                    html+='</div></div>';
-                    html+='<div class="mb-8 bg-gradient-to-r from-pink-100 to-orange-100 p-6 rounded-2xl"><h3 class="text-2xl font-bold mb-4 text-gray-800">🖼️ BABAK TEBAK GAMBAR (1-3)</h3><div class="space-y-6">';
-                    state.imageRounds.forEach((r,ri)=>{
-                        html+=`<div class="bg-white p-4 rounded-xl"><h4 class="text-lg font-bold mb-3 text-gray-700">GAMBAR ${ri+1}</h4><div class="space-y-3">
-                            <input type="text" value="${r.imageClue}" oninput="state.imageRounds[${ri}].imageClue=this.value" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" placeholder="Petunjuk"/>
-                            <input type="text" value="${r.imageUrl}" oninput="state.imageRounds[${ri}].imageUrl=this.value" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" placeholder="URL Gambar"/>
-                            <input type="text" value="${r.imageAnswer}" oninput="state.imageRounds[${ri}].imageAnswer=this.value" class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg" placeholder="Jawaban"/>
-                        </div></div>`;
-                    });
-                    html+='</div></div></div>';
-                }else{
-                    html+=`<div class="text-center flex flex-col items-center justify-center min-h-[500px]">
-                        <div class="mb-8"><h1 class="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">SELAMAT DATANG</h1>
-                        <p class="text-3xl text-gray-600 font-semibold">di Family 100 Edukatif!</p></div>
-                        <div class="grid grid-cols-2 gap-6 mb-8 w-full max-w-2xl">
-                            <div class="bg-gradient-to-br from-blue-400 to-blue-600 p-8 rounded-2xl shadow-lg transform hover:scale-105 transition">
-                                <h3 class="text-2xl font-bold text-white mb-4">👥 TIM A</h3>
-                                <input type="text" value="${state.teamA.name}" oninput="state.teamA.name=this.value" class="w-full text-2xl font-bold text-center p-4 rounded-xl border-4 border-white" placeholder="Nama Tim A"/>
-                            </div>
-                            <div class="bg-gradient-to-br from-red-400 to-red-600 p-8 rounded-2xl shadow-lg transform hover:scale-105 transition">
-                                <h3 class="text-2xl font-bold text-white mb-4">👥 TIM B</h3>
-                                <input type="text" value="${state.teamB.name}" oninput="state.teamB.name=this.value" class="w-full text-2xl font-bold text-center p-4 rounded-xl border-4 border-white" placeholder="Nama Tim B"/>
-                            </div>
-                        </div>
-                        <div class="space-y-4 text-xl text-gray-700 mb-8">
-                            <p>🎯 3 Babak Pertanyaan Utama</p><p>🖼️ 3 Babak Tebak Gambar</p><p>🏆 Tim dengan poin tertinggi menang!</p>
-                        </div>
-                        <button onclick="nextSlide()" class="px-16 py-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-3xl font-bold rounded-2xl shadow-2xl hover:from-green-600 hover:to-emerald-600 transition transform hover:scale-105">
-                            MULAI PERMAINAN →
-                        </button>
-                    </div>`;
-                }
-            }
-            
-            // SLIDES 1-3: MAIN ROUNDS
-            else if(state.currentSlide>=1&&state.currentSlide<=3){
-                const r=state.mainRounds[getRoundIdx()],tp=getTotalPoints();
-                html+=`<div class="grid grid-cols-2 gap-6 mb-6">${teamCard('A')}${teamCard('B')}</div>`;
-                html+=`<div class="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl p-6 mb-8 shadow-lg">
-                    <h2 class="text-3xl font-bold text-center text-white mb-2">BABAK ${state.currentSlide} - PERTANYAAN</h2>
-                    <p class="text-2xl text-center text-white font-semibold">${r.question}</p>
-                </div>`;
-                html+=`<div class="flex justify-between items-center mb-6">
-                    <div class="bg-green-500 text-white px-8 py-4 rounded-xl shadow-lg">
-                        <div class="text-sm font-semibold">POIN BABAK INI</div>
-                        <div class="text-4xl font-bold">${tp}</div>
+  // --- Start of New/Modified Logic ---
+
+  // Fungsi untuk menangani unggahan gambar
+  const handleImageUpload = (e, roundIndex) => {
+    const file = e.target.files[0];
+    if (file) {
+      const newUrl = URL.createObjectURL(file);
+      const newImageRounds = [...imageRounds];
+      newImageRounds[roundIndex].imageUrl = newUrl;
+      setImageRounds(newImageRounds);
+      playSound('correct');
+    }
+  };
+
+  // Fungsi untuk mengubah petunjuk/jawaban di Image Round (Edit Mode)
+  const handleImageRoundEdit = (field, value) => {
+    const roundIndex = getCurrentRoundIndex();
+    const newImageRounds = [...imageRounds];
+    newImageRounds[roundIndex][field] = value;
+    setImageRounds(newImageRounds);
+  };
+  
+  // Fungsi untuk memberikan 100 poin di Image Round
+  const addImageRoundPoints = (team) => {
+    if (!currentImageRound || currentImageRound.isAnswered) return; // Mencegah double poin
+    
+    const roundIndex = getCurrentRoundIndex();
+    const pointsToAdd = 100;
+    
+    if (team === 'A') {
+      setTeamA(prev => ({ 
+        ...prev, 
+        score: prev.score + pointsToAdd,
+        roundScores: prev.roundScores.map((score, i) => i === roundIndex + 3 ? pointsToAdd : score)
+      }));
+    } else {
+      setTeamB(prev => ({ 
+        ...prev, 
+        score: prev.score + pointsToAdd,
+        roundScores: prev.roundScores.map((score, i) => i === roundIndex + 3 ? pointsToAdd : score)
+      }));
+    }
+    
+    // Tandai babak ini sudah dijawab
+    const newImageRounds = [...imageRounds];
+    newImageRounds[roundIndex].isAnswered = true;
+    setImageRounds(newImageRounds);
+
+    playSound('correct');
+  };
+
+  // --- End of New/Modified Logic ---
+
+
+  const handleAnswerClick = (index) => {
+    if (!currentRound) return;
+    
+    const roundIndex = getCurrentRoundIndex();
+    const newRounds = [...mainRounds];
+    
+    if (!newRounds[roundIndex].answers[index].revealed) {
+      newRounds[roundIndex].answers[index].revealed = true;
+      setMainRounds(newRounds);
+      playSound('correct');
+    }
+  };
+
+  const handleWrongAnswer = () => {
+    if (!currentRound) return;
+    
+    const roundIndex = getCurrentRoundIndex();
+    const newRounds = [...mainRounds];
+    
+    if (newRounds[roundIndex].wrongCount < 3) {
+      newRounds[roundIndex].wrongCount++;
+      setMainRounds(newRounds);
+      playSound('wrong');
+    }
+  };
+
+  const switchTeam = () => {
+    setCurrentTeam(currentTeam === 'A' ? 'B' : 'A');
+    playSound('next');
+  };
+
+  const addPointsToTeam = (team) => {
+    if (team === 'A') {
+      setTeamA({ ...teamA, score: teamA.score + totalPoints });
+    } else {
+      setTeamB({ ...teamB, score: teamB.score + totalPoints });
+    }
+    playSound('correct');
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide(currentSlide + 1);
+    playSound('next');
+  };
+
+  const revealImage = () => {
+    if (!currentImageRound) return;
+    
+    const roundIndex = getCurrentRoundIndex();
+    const newRounds = [...imageRounds];
+    
+    if (newRounds[roundIndex].revealLevel < 2) {
+      newRounds[roundIndex].revealLevel++;
+      setImageRounds(newRounds);
+      playSound('correct');
+    }
+  };
+
+  const toggleAnswer = () => {
+    if (!currentImageRound) return;
+    
+    const roundIndex = getCurrentRoundIndex();
+    const newRounds = [...imageRounds];
+    newRounds[roundIndex].showAnswer = !newRounds[roundIndex].showAnswer;
+    setImageRounds(newRounds);
+    playSound('next');
+  };
+
+  const resetGame = () => {
+    setCurrentSlide(0);
+    setTeamA({ ...teamA, score: 0, roundScores: [0, 0, 0, 0, 0, 0] });
+    setTeamB({ ...teamB, score: 0, roundScores: [0, 0, 0, 0, 0, 0] });
+    setCurrentTeam('A');
+    
+    setMainRounds(mainRounds.map(round => ({
+      ...round,
+      answers: round.answers.map(ans => ({ ...ans, revealed: false })),
+      wrongCount: 0
+    })));
+    
+    setImageRounds(imageRounds.map(round => ({
+      ...round,
+      revealLevel: 0,
+      showAnswer: false,
+      isAnswered: false, // Reset status dijawab
+    })));
+    
+    // Clean up created object URLs to prevent memory leaks
+    imageRounds.forEach(round => {
+      if (round.imageUrl && round.imageUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(round.imageUrl);
+      }
+    });
+
+    // Reset Image Rounds to initial state (optional: you might want to keep uploaded images)
+    // For simplicity, we reset to the initial state to clear any uploaded image URLs that weren't revoked
+    // Note: A more robust solution for URL cleanup might be needed if images are kept after reset.
+    setImageRounds(initialImageRounds.map(round => ({...round, isAnswered: false})));
+
+
+    playSound('next');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-500 p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-t-3xl shadow-2xl p-6 flex justify-between items-center">
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+            🎮 FAMILY 100 EDUKATIF
+          </h1>
+          <div className="flex gap-3">
+            {currentSlide >= 4 && (
+                <button
+                    onClick={() => setEditMode(!editMode)}
+                    className={`px-4 py-2 rounded-full font-bold transition ${editMode ? 'bg-yellow-500 text-white hover:bg-yellow-600' : 'bg-gray-100 hover:bg-gray-200'}`}
+                    title="Toggle Edit Mode"
+                >
+                    {editMode ? '✅ SELESAI EDIT' : '✏️ EDIT GAMBAR'}
+                </button>
+            )}
+            <button
+              onClick={() => setSoundOn(!soundOn)}
+              className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 transition"
+              title="Toggle Sound"
+            >
+              {soundOn ? <Volume2 className="w-6 h-6" /> : <VolumeX className="w-6 h-6" />}
+            </button>
+            {currentSlide > 0 && (
+              <button
+                onClick={resetGame}
+                className="px-6 py-3 rounded-full bg-red-500 text-white font-bold hover:bg-red-600 transition"
+              >
+                🔄 RESET GAME
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Progress Indicator */}
+        {currentSlide > 0 && (
+          <div className="bg-white px-6 py-4">
+            <div className="flex gap-2 items-center">
+              {[1, 2, 3, 4, 5, 6].map((num) => (
+                <div
+                  key={num}
+                  className={`flex-1 h-3 rounded-full transition-all ${
+                    currentSlide >= num
+                      ? num <= 3 ? 'bg-gradient-to-r from-blue-500 to-purple-500' : 'bg-gradient-to-r from-pink-500 to-orange-500'
+                      : 'bg-gray-200'
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="flex justify-between mt-2 text-sm font-bold text-gray-600">
+              <span>BABAK 1</span>
+              <span>BABAK 2</span>
+              <span>BABAK 3</span>
+              <span>GAMBAR 1</span>
+              <span>GAMBAR 2</span>
+              <span>GAMBAR 3</span>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="bg-white rounded-b-3xl shadow-2xl p-8 min-h-[600px]">
+          {/* SLIDE 0: WELCOME (No change needed) */}
+          {currentSlide === 0 && (
+            <div className="text-center flex flex-col items-center justify-center min-h-[500px]">
+              <div className="mb-8">
+                <h1 className="text-6xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+                  SELAMAT DATANG
+                </h1>
+                <p className="text-3xl text-gray-600 font-semibold">di Family 100 Edukatif!</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6 mb-8 w-full max-w-2xl">
+                <div className="bg-gradient-to-br from-blue-400 to-blue-600 p-8 rounded-2xl shadow-lg transform hover:scale-105 transition">
+                  <h3 className="text-2xl font-bold text-white mb-4">👥 TIM A</h3>
+                  <input
+                    type="text"
+                    value={teamA.name}
+                    onChange={(e) => setTeamA({ ...teamA, name: e.target.value })}
+                    className="w-full text-2xl font-bold text-center p-4 rounded-xl border-4 border-white"
+                    placeholder="Nama Tim A"
+                  />
+                </div>
+                <div className="bg-gradient-to-br from-red-400 to-red-600 p-8 rounded-2xl shadow-lg transform hover:scale-105 transition">
+                  <h3 className="text-2xl font-bold text-white mb-4">👥 TIM B</h3>
+                  <input
+                    type="text"
+                    value={teamB.name}
+                    onChange={(e) => setTeamB({ ...teamB, name: e.target.value })}
+                    className="w-full text-2xl font-bold text-center p-4 rounded-xl border-4 border-white"
+                    placeholder="Nama Tim B"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4 text-xl text-gray-700 mb-8">
+                <p>🎯 3 Babak Pertanyaan Utama</p>
+                <p>🖼️ 3 Babak Tebak Gambar</p>
+                <p>🏆 Tim dengan poin tertinggi menang!</p>
+              </div>
+
+              <button
+                onClick={nextSlide}
+                className="px-16 py-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-3xl font-bold rounded-2xl shadow-2xl hover:from-green-600 hover:to-emerald-600 transition transform hover:scale-105 flex items-center gap-3"
+              >
+                MULAI PERMAINAN <ChevronRight className="w-10 h-10" />
+              </button>
+            </div>
+          )}
+
+          {/* SLIDES 1-3: MAIN ROUNDS (No change needed) */}
+          {isMainRound && currentRound && (
+            <div>
+              {/* Team Scores */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className={`p-6 rounded-2xl shadow-lg transition ${
+                  currentTeam === 'A' ? 'bg-gradient-to-br from-blue-500 to-blue-700 ring-4 ring-yellow-400' : 'bg-gradient-to-br from-blue-400 to-blue-600'
+                }`}>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-white mb-2">{teamA.name}</h3>
+                    <div className="text-5xl font-bold text-white">{teamA.score}</div>
+                    {currentTeam === 'A' && <div className="mt-2 text-yellow-300 font-bold animate-pulse">⭐ GILIRAN MAIN</div>}
+                  </div>
+                </div>
+                <div className={`p-6 rounded-2xl shadow-lg transition ${
+                  currentTeam === 'B' ? 'bg-gradient-to-br from-red-500 to-red-700 ring-4 ring-yellow-400' : 'bg-gradient-to-br from-red-400 to-red-600'
+                }`}>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold text-white mb-2">{teamB.name}</h3>
+                    <div className="text-5xl font-bold text-white">{teamB.score}</div>
+                    {currentTeam === 'B' && <div className="mt-2 text-yellow-300 font-bold animate-pulse">⭐ GILIRAN MAIN</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Question */}
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl p-6 mb-8 shadow-lg">
+                <h2 className="text-3xl font-bold text-center text-white mb-2">BABAK {currentSlide} - PERTANYAAN</h2>
+                <p className="text-2xl text-center text-white font-semibold">{currentRound.question}</p>
+              </div>
+
+              {/* Score and Wrong Indicators */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="bg-green-500 text-white px-8 py-4 rounded-xl shadow-lg">
+                  <div className="text-sm font-semibold">POIN BABAK INI</div>
+                  <div className="text-4xl font-bold">{totalPoints}</div>
+                </div>
+                <div className="flex gap-3">
+                  {[1, 2, 3].map((num) => (
+                    <div
+                      key={num}
+                      className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg transition ${
+                        currentRound.wrongCount >= num ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-400'
+                      }`}
+                    >
+                      ✕
                     </div>
-                    <div class="flex gap-3">${[1,2,3].map(n=>`<div class="w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg ${r.wrongCount>=n?'bg-red-500 text-white':'bg-gray-200 text-gray-400'}">✕</div>`).join('')}</div>
-                </div>`;
-                html+='<div class="grid grid-cols-1 gap-4 mb-6">';
-                r.answers.forEach((a,i)=>{
-                    html+=`<div onclick="revealAns(${i})" class="cursor-pointer transition-all duration-500 transform hover:scale-105">
-                        <div class="bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl p-1 shadow-lg">
-                            <div class="bg-white rounded-lg p-4 flex items-center justify-between">
-                                <div class="flex items-center gap-4 flex-1">
-                                    <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold text-xl">${i+1}</div>
-                                    <div class="text-2xl font-bold ${a.revealed?'text-gray-800':'text-transparent'}">${a.revealed?a.text:'████████'}</div>
-                                </div>
-                                <div class="text-3xl font-bold px-6 py-2 rounded-lg ${a.revealed?'bg-gradient-to-r from-yellow-400 to-orange-400 text-white':'bg-gray-200 text-transparent'}">${a.revealed?a.points:'██'}</div>
-                            </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Answer Board */}
+              <div className="grid grid-cols-1 gap-4 mb-6">
+                {currentRound.answers.map((answer, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleAnswerClick(index)}
+                    className="cursor-pointer transition-all duration-500 transform hover:scale-105"
+                  >
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl p-1 shadow-lg">
+                      <div className="bg-white rounded-lg p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                            {index + 1}
+                          </div>
+                          <div className={`text-2xl font-bold transition ${
+                            answer.revealed ? 'text-gray-800' : 'text-transparent'
+                          }`}>
+                            {answer.revealed ? answer.text : '████████'}
+                          </div>
                         </div>
-                    </div>`;
-                });
-                html+='</div>';
-                html+=`<div class="grid grid-cols-2 gap-4 mb-4">
-                    <button onclick="addWrong()" ${r.wrongCount>=3?'disabled':''} class="py-4 rounded-xl font-bold text-xl shadow-lg transition ${r.wrongCount>=3?'bg-gray-300 text-gray-500 cursor-not-allowed':'bg-red-500 text-white hover:bg-red-600'}">❌ JAWABAN SALAH</button>
-                    <button onclick="switchTeam()" class="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-purple-500 text-white hover:bg-purple-600">🔄 GANTI GILIRAN</button>
-                </div>`;
-                html+=`<div class="grid grid-cols-3 gap-4">
-                    <button onclick="addPoints('A')" class="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-blue-500 text-white hover:bg-blue-600">+${tp} → ${state.teamA.name}</button>
-                    <button onclick="addPoints('B')" class="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-red-500 text-white hover:bg-red-600">+${tp} → ${state.teamB.name}</button>
-                    <button onclick="nextSlide()" class="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600">${state.currentSlide===3?'KE BABAK GAMBAR':'BABAK SELANJUTNYA'} →</button>
-                </div>`;
-            }
-            
-            // SLIDES 4-6: IMAGE ROUNDS
-            else if(state.currentSlide>=4&&state.currentSlide<=6){
-                const r=state.imageRounds[getRoundIdx()];
-                const zoom=r.revealLevel===0?'scale(3)':r.revealLevel===1?'scale(1.8)':'scale(1)';
-                const lblBg=r.revealLevel===0?'bg-red-500':r.revealLevel===1?'bg-yellow-400':'bg-green-400';
-                const lblTxt=r.revealLevel===1?'text-gray-900':'text-white';
-                const lblCnt=r.revealLevel===0?'🔍 ZOOM 3X - Detail Kecil':r.revealLevel===1?'🔎 ZOOM 1.8X - Lebih Luas':'✅ FULL - Gambar Utuh';
-                html+=`<div class="text-center mb-6">
-                    <h2 class="text-4xl font-bold mb-4 bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent">🖼️ BABAK TEBAK GAMBAR ${getRoundIdx()+1}</h2>
-                    <div class="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
-                        <div class="bg-blue-100 p-4 rounded-xl"><div class="text-sm text-gray-600">${state.teamA.name}</div><div class="text-3xl font-bold text-blue-600">${state.teamA.score}</div></div>
-                        <div class="bg-red-100 p-4 rounded-xl"><div class="text-sm text-gray-600">${state.teamB.name}</div><div class="text-3xl font-bold text-red-600">${state.teamB.score}</div></div>
+                        <div className={`text-3xl font-bold px-6 py-2 rounded-lg transition ${
+                          answer.revealed 
+                            ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-white' 
+                            : 'bg-gray-200 text-transparent'
+                        }`}>
+                          {answer.revealed ? answer.points : '██'}
+                        </div>
+                      </div>
                     </div>
-                </div>`;
-                html+=`<div class="bg-gradient-to-r from-pink-400 to-orange-400 rounded-2xl p-6 mb-8 shadow-lg">
-                    <h2 class="text-3xl font-bold text-center text-white mb-2">PETUNJUK</h2>
-                    <p class="text-xl text-center text-white font-semibold">${r.imageClue}</p>
-                </div>`;
-                html+=`<div class="relative mb-8 rounded-2xl overflow-hidden shadow-2xl bg-gray-900" style="height:400px">
-                    <img src="${r.imageUrl}" alt="Mystery" class="w-full h-full object-cover transition-all duration-700 ease-out" style="transform:${zoom};transform-origin:center center"/>
-                    <div class="absolute top-4 left-4 px-6 py-3 rounded-xl shadow-lg ${lblBg}">
-                        <p class="text-lg font-bold ${lblTxt}">${lblCnt}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Control Buttons */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <button
+                  onClick={handleWrongAnswer}
+                  disabled={currentRound.wrongCount >= 3}
+                  className={`py-4 rounded-xl font-bold text-xl shadow-lg transition ${
+                    currentRound.wrongCount >= 3
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
+                >
+                  ❌ JAWABAN SALAH
+                </button>
+                <button
+                  onClick={switchTeam}
+                  className="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-purple-500 text-white hover:bg-purple-600"
+                >
+                  🔄 GANTI GILIRAN
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <button
+                  onClick={() => addPointsToTeam('A')}
+                  className="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-blue-500 text-white hover:bg-blue-600"
+                >
+                  +{totalPoints} → {teamA.name}
+                </button>
+                <button
+                  onClick={() => addPointsToTeam('B')}
+                  className="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-red-500 text-white hover:bg-red-600"
+                >
+                  +{totalPoints} → {teamB.name}
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 flex items-center justify-center gap-2"
+                >
+                  {currentSlide === 3 ? 'KE BABAK GAMBAR' : 'BABAK SELANJUTNYA'} <ChevronRight />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDES 4-6: IMAGE ROUNDS (MODIFIED) */}
+          {isImageRound && currentImageRound && (
+            <div>
+              {/* Header */}
+              <div className="text-center mb-6">
+                <h2 className="text-4xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-500">
+                  🖼️ BABAK TEBAK GAMBAR {getCurrentRoundIndex() + 1}
+                </h2>
+                <div className="grid grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  <div className="bg-blue-100 p-4 rounded-xl">
+                    <div className="text-sm text-gray-600">{teamA.name}</div>
+                    <div className="text-3xl font-bold text-blue-600">{teamA.score}</div>
+                  </div>
+                  <div className="bg-red-100 p-4 rounded-xl">
+                    <div className="text-sm text-gray-600">{teamB.name}</div>
+                    <div className="text-3xl font-bold text-red-600">{teamB.score}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Mode Controls (New Feature) */}
+              {editMode && (
+                <div className="bg-yellow-100 p-4 rounded-xl mb-6 border-2 border-yellow-500">
+                    <h3 className="text-xl font-bold text-yellow-700 mb-3">✏️ Mode Edit Babak Gambar</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="flex flex-col">
+                            <label className="text-sm font-semibold mb-1">Upload Gambar Baru:</label>
+                            <label className="flex items-center justify-center p-3 bg-white text-yellow-600 rounded-lg border-2 border-yellow-300 cursor-pointer hover:bg-yellow-50 transition">
+                                <Upload className="w-5 h-5 mr-2" /> Pilih File
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    className="hidden" 
+                                    onChange={(e) => handleImageUpload(e, getCurrentRoundIndex())}
+                                />
+                            </label>
+                        </div>
+                        <div className="flex flex-col">
+                            <label htmlFor="imageClue" className="text-sm font-semibold mb-1">Petunjuk:</label>
+                            <input
+                                id="imageClue"
+                                type="text"
+                                value={currentImageRound.imageClue}
+                                onChange={(e) => handleImageRoundEdit('imageClue', e.target.value)}
+                                className="p-2 border rounded-lg"
+                                placeholder="Masukkan petunjuk gambar"
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <label htmlFor="imageAnswer" className="text-sm font-semibold mb-1">Jawaban Benar:</label>
+                            <input
+                                id="imageAnswer"
+                                type="text"
+                                value={currentImageRound.imageAnswer}
+                                onChange={(e) => handleImageRoundEdit('imageAnswer', e.target.value)}
+                                className="p-2 border rounded-lg"
+                                placeholder="Masukkan jawaban"
+                            />
+                        </div>
                     </div>
-                </div>`;
-                html+=`<div class="flex gap-3 justify-center mb-6">${[0,1,2].map(l=>`<div class="w-4 h-4 rounded-full ${r.revealLevel>l?'bg-green-500':'bg-gray-300'}"></div>`).join('')}</div>`;
-                html+=`<div class="grid grid-cols-2 gap-4 mb-4">
-                    <button onclick="revealImg()" ${r.revealLevel>=2?'disabled':''} class="py-4 rounded-xl font-bold text-xl shadow-lg transition ${r.revealLevel>=2?'bg-gray-300 text-gray-500 cursor-not-allowed':'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'}">
-                        ${r.revealLevel===0?'🔍 PERBESAR SEDIKIT':r.revealLevel===1?'✨ TAMPILKAN PENUH':'✅ SELESAI'}
-                    </button>
-                    <button onclick="toggleAns()" class="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600">
-                        ${r.showAnswer?'🙈 SEMBUNYIKAN':'👁️ TAMPILKAN JAWABAN'}
-                    </button>
-                </div>`;
-                if(state.currentSlide<6){
-                    html+='<button onclick="nextSlide()" class="w-full py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600">GAMBAR SELANJUTNYA →</button>';
-                }else{
-                    const winner=state.teamA.score>state.teamB.score?`🎉 ${state.teamA.name} MENANG dengan ${state.teamA.score} poin!`:state.teamB.score>state.teamA.score?`🎉 ${state.teamB.name} MENANG dengan ${state.teamB.score} poin!`:'🤝 SERI! Kedua tim hebat!';
-                    html+=`<div class="mt-8 p-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl text-center">
-                        <h3 class="text-3xl font-bold text-white mb-4">🏆 PERMAINAN SELESAI!</h3>
-                        <div class="text-2xl text-white font-semibold mb-6"><p>${winner}</p></div>
-                        <button onclick="reset()" class="px-12 py-4 bg-white text-orange-500 font-bold text-xl rounded-xl hover:bg-gray-100 transition">🔄 MAIN LAGI</button>
-                    </div>`;
-                }
-                if(r.showAnswer){
-                    html+=`<div class="mt-6 p-6 bg-gradient-to-r from-green-400 to-emerald-400 rounded-2xl shadow-lg animate-pulse">
-                        <p class="text-center text-white text-sm font-semibold mb-2">JAWABAN BENAR:</p>
-                        <p class="text-center text-white text-3xl font-bold">${r.imageAnswer}</p>
-                    </div>`;
-                }
-            }
-            
-            html+='</div>';
-            html+=`<div class="mt-6 text-center text-white"><p class="text-lg font-semibold">📚 Family 100 Edukatif - Slide ${state.currentSlide+1} dari 7</p></div>`;
-            
-            app.innerHTML=html;
-        }
-        
-        window.onload=()=>render();
-    </script>
-</body>
-</html>
+                </div>
+              )}
+
+              {/* Clue */}
+              <div className="bg-gradient-to-r from-pink-400 to-orange-400 rounded-2xl p-6 mb-8 shadow-lg">
+                <h2 className="text-3xl font-bold text-center text-white mb-2">PETUNJUK</h2>
+                <p className="text-xl text-center text-white font-semibold">{currentImageRound.imageClue}</p>
+              </div>
+
+              {/* Image Container */}
+              <div className="relative mb-8 rounded-2xl overflow-hidden shadow-2xl bg-gray-900" style={{ height: '400px' }}>
+                <img
+                  src={currentImageRound.imageUrl}
+                  alt="Mystery"
+                  className="w-full h-full object-cover transition-all duration-700 ease-out"
+                  style={{
+                    transform: currentImageRound.revealLevel === 0 ? 'scale(3)' : currentImageRound.revealLevel === 1 ? 'scale(1.8)' : 'scale(1)',
+                    transformOrigin: 'center center'
+                  }}
+                />
+                <div className={`absolute top-4 left-4 px-6 py-3 rounded-xl shadow-lg ${
+                  currentImageRound.revealLevel === 0 ? 'bg-red-500' : currentImageRound.revealLevel === 1 ? 'bg-yellow-400' : 'bg-green-400'
+                }`}>
+                  <p className={`text-lg font-bold ${currentImageRound.revealLevel === 1 ? 'text-gray-900' : 'text-white'}`}>
+                    {currentImageRound.revealLevel === 0 ? '🔍 ZOOM 3X - Detail Kecil' : currentImageRound.revealLevel === 1 ? '🔎 ZOOM 1.8X - Lebih Luas' : '✅ FULL - Gambar Utuh'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress */}
+              <div className="flex gap-3 justify-center mb-6">
+                {[0, 1, 2].map((level) => (
+                  <div
+                    key={level}
+                    className={`w-4 h-4 rounded-full transition ${
+                      currentImageRound.revealLevel > level ? 'bg-green-500' : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Control Buttons (Modified to include Point Buttons) */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <button
+                  onClick={revealImage}
+                  disabled={currentImageRound.revealLevel >= 2}
+                  className={`py-4 rounded-xl font-bold text-xl shadow-lg transition ${
+                    currentImageRound.revealLevel >= 2
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600'
+                  }`}
+                >
+                  {currentImageRound.revealLevel === 0 ? '🔍 PERBESAR SEDIKIT' : currentImageRound.revealLevel === 1 ? '✨ TAMPILKAN PENUH' : '✅ SELESAI'}
+                </button>
+                <button
+                  onClick={toggleAnswer}
+                  className="py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
+                >
+                  {currentImageRound.showAnswer ? '🙈 SEMBUNYIKAN' : '👁️ TAMPILKAN JAWABAN'}
+                </button>
+              </div>
+
+              {/* Add Point Buttons (New Feature) */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                  <button
+                      onClick={() => addImageRoundPoints('A')}
+                      disabled={currentImageRound.isAnswered}
+                      className={`py-4 rounded-xl font-bold text-xl shadow-lg transition ${
+                          currentImageRound.isAnswered ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                  >
+                      {currentImageRound.isAnswered ? `✅ ${teamA.name}` : `+100 POIN → ${teamA.name}`}
+                  </button>
+                  <button
+                      onClick={() => addImageRoundPoints('B')}
+                      disabled={currentImageRound.isAnswered}
+                      className={`py-4 rounded-xl font-bold text-xl shadow-lg transition ${
+                        currentImageRound.isAnswered ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-red-500 text-white hover:bg-red-600'
+                      }`}
+                  >
+                      {currentImageRound.isAnswered ? `✅ ${teamB.name}` : `+100 POIN → ${teamB.name}`}
+                  </button>
+              </div>
+
+
+              {currentSlide < 6 && (
+                <button
+                  onClick={nextSlide}
+                  className="w-full py-4 rounded-xl font-bold text-xl shadow-lg transition bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-600 hover:to-emerald-600 flex items-center justify-center gap-2"
+                >
+                  GAMBAR SELANJUTNYA <ChevronRight />
+                </button>
+              )}
+
+              {currentSlide === 6 && (
+                <div className="mt-8 p-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-2xl text-center">
+                  <h3 className="text-3xl font-bold text-white mb-4">🏆 PERMAINAN SELESAI!</h3>
+                  <div className="text-2xl text-white font-semibold mb-6">
+                    {teamA.score > teamB.score ? (
+                      <p>🎉 {teamA.name} MENANG dengan {teamA.score} poin!</p>
+                    ) : teamB.score > teamA.score ? (
+                      <p>🎉 {teamB.name} MENANG dengan {teamB.score} poin!</p>
+                    ) : (
+                      <p>🤝 SERI! Kedua tim hebat!</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={resetGame}
+                    className="px-12 py-4 bg-white text-orange-500 font-bold text-xl rounded-xl hover:bg-gray-100 transition"
+                  >
+                    🔄 MAIN LAGI
+                  </button>
+                </div>
+              )}
+
+              {/* Show Answer */}
+              {currentImageRound.showAnswer && (
+                <div className="mt-6 p-6 bg-gradient-to-r from-green-400 to-emerald-400 rounded-2xl shadow-lg animate-pulse">
+                  <p className="text-center text-white text-sm font-semibold mb-2">JAWABAN BENAR:</p>
+                  <p className="text-center text-white text-3xl font-bold">{currentImageRound.imageAnswer}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center text-white">
+          <p className="text-lg font-semibold">📚 Family 100 Edukatif - Slide {currentSlide + 1} dari 7</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Family100Game;
